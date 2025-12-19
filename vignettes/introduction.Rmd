@@ -1,0 +1,179 @@
+---
+title: "Getting Started with quickOutlier"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with quickOutlier}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+`quickOutlier` is a comprehensive toolkit for detecting and treating anomalies in data. It goes beyond simple statistics, incorporating Machine Learning (Isolation Forest) and Time Series analysis.
+
+First, load the library:
+
+```{r}
+library(quickOutlier)
+library(ggplot2)
+```
+
+## 1. Univariate Analysis (The Basics)
+
+For simple numeric vectors, use `detect_outliers`. You can choose between **Z-Score** (parametric) or **IQR** (robust).
+
+```{r}
+# Create data with an obvious outlier
+set.seed(123)
+df <- data.frame(val = c(rnorm(50), 100))
+
+# Detect using Z-Score (Standard Deviation)
+outliers <- detect_outliers(df, "val", method = "zscore", threshold = 3)
+print(head(outliers))
+```
+
+### New: Educational Visualization
+
+We can visualize the distribution, mean, and median with a single line of code. Detected outliers are highlighted in red.
+
+```{r}
+plot_outliers(df, "val", method = "zscore")
+```
+
+### Scanning the Dataset
+
+If you want a quick overview of all numeric columns and their outlier count, use `scan_data`.
+
+```{r}
+# Scan the entire dataframe
+scan_data(mtcars, method = "iqr")
+```
+
+***
+
+## 2. Multivariate Analysis (Two or more variables)
+
+Sometimes a value is normal individually but anomalous in combination with others (e.g., a person 1.50m tall weighing 100kg).
+
+### Mahalanobis Distance
+
+Use this for detecting outliers based on correlation structures.
+
+```{r}
+# Create correlated data and add an outlier
+df_multi <- data.frame(x = 1:20, y = 1:20)
+df_multi <- rbind(df_multi, data.frame(x = 5, y = 20)) # Anomalous point
+
+res_multi <- detect_multivariate(df_multi, c("x", "y"))
+tail(res_multi, 3)
+```
+
+### Interactive Plot (Plotly)
+
+If you are viewing this as HTML, you can interact with the plot (zoom, hover).
+
+```{r}
+# Lower confidence level to make it more sensitive for the demo
+plot_interactive(df_multi, "x", "y", confidence_level = 0.99)
+```
+
+### Density-based Detection (LOF)
+
+For complex shapes where correlation isn't enough, **Local Outlier Factor (LOF)** is powerful. It finds points that are isolated relative to their neighbors.
+
+```{r}
+# Use the same multi-dimensional data
+# k = number of neighbors to consider
+res_lof <- detect_density(df_multi, k = 5, threshold = 1.5)
+res_lof
+```
+
+***
+
+## 3. Advanced Methods (Machine Learning)
+
+For high-dimensional or complex datasets, statistical methods often fail. `quickOutlier` implements **Isolation Forest**.
+
+```{r}
+# Generate a 2D blob of data
+data_ml <- data.frame(
+  feat1 = rnorm(100),
+  feat2 = rnorm(100)
+)
+# Add an extreme outlier
+data_ml[1, ] <- c(10, 10)
+
+# Run Isolation Forest
+# ntrees = 100 is standard. contamination = 0.05 means we expect ~5% outliers.
+res_if <- detect_iforest(data_ml, ntrees = 100, contamination = 0.05)
+
+# View the outlier score (0 to 1)
+head(subset(res_if, Is_Outlier == TRUE))
+```
+
+***
+
+## 4. Time Series Analysis
+
+Detecting anomalies in time series requires removing **Seasonality** (repeating patterns) and **Trend**.
+
+```{r}
+# Create a synthetic time series: Sine wave + Noise + Outlier
+t <- seq(1, 10, length.out = 60)
+y <- sin(t) + rnorm(60, sd = 0.1)
+y[30] <- 5 # Spike (Outlier)
+
+# Detect using STL Decomposition
+res_ts <- detect_ts_outliers(y, frequency = 12)
+
+# Check the detected outlier
+subset(res_ts, Is_Outlier == TRUE)
+```
+
+***
+
+## 5. Data Cleaning & Diagnostics
+
+### Categorical Outliers (Typos)
+
+Find categories that appear too infrequently (potential typos).
+
+```{r}
+cities <- c(rep("Madrid", 10), "Barcalona", "Barcelona", "MAdrid")
+detect_categorical_outliers(cities, min_freq = 0.1)
+```
+
+### Regression Diagnostics (Cook's Distance)
+
+Find points that have a disproportionate influence on a linear model.
+
+```{r}
+# Use mtcars and create a high leverage point
+cars_df <- mtcars
+cars_df[1, "wt"] <- 10; cars_df[1, "mpg"] <- 50
+
+infl <- diagnose_influence(cars_df, "mpg", "wt")
+head(subset(infl, Is_Influential == TRUE))
+```
+
+### Treating Outliers (Winsorization)
+
+Instead of deleting data, it is often better to "cap" extreme values to a certain threshold (Winsorization).
+
+```{r}
+# Create data with an extreme value
+df_treat <- data.frame(val = c(1, 2, 3, 2, 1, 100))
+
+# Cap values at 1.5 * IQR
+df_clean <- treat_outliers(df_treat, "val", method = "iqr", threshold = 1.5)
+print(df_clean$val)
+```
