@@ -1,11 +1,13 @@
 Package: quickOutlier
 Title: Detect and Treat Outliers in Data Mining
 Version: 0.1.5
-Authors@R: 
-    person("Daniel", "López Pérez", 
-    email = "dlopez350@icloud.com", 
-    role = c("aut", "cre"), 
-    comment = c(ORCID = "0009-0008-1695-9837"))
+Authors@R:
+    person(
+      given  = "Daniel",
+      family = "López Pérez",
+      email  = "dlopez350@icloud.com",
+      role   = c("aut", "cre"),
+      comment = c(ORCID = "0009-0008-1695-9837"))
 Description: Implements a suite of tools for outlier detection and treatment 
     in data mining. It includes univariate methods (Z-score, Interquartile Range), 
     multivariate detection using Mahalanobis distance, and density-based 
